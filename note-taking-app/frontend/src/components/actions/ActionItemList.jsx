@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, Plus, Download } from 'lucide-react';
+import { ChevronDown, Plus, Download, ArrowUpDown } from 'lucide-react';
 import ActionItemCard from './ActionItemCard';
 import ActionItemForm from './ActionItemForm';
 
@@ -27,6 +27,51 @@ const ActionItemList = () => {
   const [showForm, setShowForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [sortConfig, setSortConfig] = useState({
+    key: 'dueDate',
+    direction: 'asc'
+  });
+
+  // Sorting function
+  const sortItems = (items) => {
+    return [...items].sort((a, b) => {
+      if (sortConfig.key === 'dueDate') {
+        const dateA = new Date(a.dueDate);
+        const dateB = new Date(b.dueDate);
+        return sortConfig.direction === 'asc'
+          ? dateA - dateB
+          : dateB - dateA;
+      }
+
+      if (sortConfig.key === 'effortLevel') {
+        const effortOrder = { 'S': 1, 'M': 2, 'L': 3 };
+        return sortConfig.direction === 'asc'
+          ? effortOrder[a.effortLevel] - effortOrder[b.effortLevel]
+          : effortOrder[b.effortLevel] - effortOrder[a.effortLevel];
+      }
+
+      if (sortConfig.key === 'status') {
+        const statusOrder = { 'TODO': 1, 'IN_PROGRESS': 2, 'COMPLETED': 3 };
+        return sortConfig.direction === 'asc'
+          ? statusOrder[a.status] - statusOrder[b.status]
+          : statusOrder[b.status] - statusOrder[a.status];
+      }
+
+      // Default title sort
+      const valueA = a[sortConfig.key].toLowerCase();
+      const valueB = b[sortConfig.key].toLowerCase();
+      return sortConfig.direction === 'asc'
+        ? valueA.localeCompare(valueB)
+        : valueB.localeCompare(valueA);
+    });
+  };
+
+  const handleSort = (key) => {
+    setSortConfig(prevSort => ({
+      key,
+      direction: prevSort.key === key && prevSort.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
 
   const handleSave = (formData) => {
     if (selectedItem) {
@@ -73,6 +118,8 @@ const ActionItemList = () => {
     return item.status === filterStatus;
   });
 
+  const sortedAndFilteredItems = sortItems(filteredItems);
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -109,6 +156,37 @@ const ActionItemList = () => {
         </div>
       </div>
 
+      {/* Sort Controls */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => handleSort('dueDate')}
+          className={`flex items-center px-2 py-1 text-sm rounded hover:bg-gray-100 ${
+            sortConfig.key === 'dueDate' ? 'bg-gray-100' : ''
+          }`}
+        >
+          Due Date
+          <ArrowUpDown className="h-3 w-3 ml-1" />
+        </button>
+        <button
+          onClick={() => handleSort('effortLevel')}
+          className={`flex items-center px-2 py-1 text-sm rounded hover:bg-gray-100 ${
+            sortConfig.key === 'effortLevel' ? 'bg-gray-100' : ''
+          }`}
+        >
+          Effort
+          <ArrowUpDown className="h-3 w-3 ml-1" />
+        </button>
+        <button
+          onClick={() => handleSort('status')}
+          className={`flex items-center px-2 py-1 text-sm rounded hover:bg-gray-100 ${
+            sortConfig.key === 'status' ? 'bg-gray-100' : ''
+          }`}
+        >
+          Status
+          <ArrowUpDown className="h-3 w-3 ml-1" />
+        </button>
+      </div>
+
       {showForm && (
         <div className="mb-4">
           <ActionItemForm
@@ -123,12 +201,12 @@ const ActionItemList = () => {
       )}
 
       <div className="space-y-2 overflow-y-auto">
-        {filteredItems.length === 0 ? (
+        {sortedAndFilteredItems.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             No action items found
           </div>
         ) : (
-          filteredItems.map(item => (
+          sortedAndFilteredItems.map(item => (
             <ActionItemCard
               key={item.id}
               {...item}
