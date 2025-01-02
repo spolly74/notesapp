@@ -1,34 +1,55 @@
-// src/middleware/errorHandler.js
+const logger = require('../config/logger');
+
+class AppError extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.statusCode = statusCode;
+    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
 
 const errorHandler = (err, req, res, next) => {
-    console.error(err.stack);
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
 
-    // Default error
-    let statusCode = 500;
-    let message = 'Internal Server Error';
+  // Log error
+  logger.error({
+    message: err.message,
+    stack: err.stack,
+    statusCode: err.statusCode,
+    path: req.path,
+    method: req.method,
+    requestId: req.id
+  });
 
-    // Handle different types of errors
-    if (err.name === 'ValidationError') {
-      statusCode = 400;
-      message = err.message;
-    } else if (err.name === 'UnauthorizedError') {
-      statusCode = 401;
-      message = 'Unauthorized';
-    } else if (err.name === 'ForbiddenError') {
-      statusCode = 403;
-      message = 'Forbidden';
-    } else if (err.name === 'NotFoundError') {
-      statusCode = 404;
-      message = 'Resource Not Found';
+  if (process.env.NODE_ENV === 'production') {
+    // Operational, trusted error: send message to client
+    if (err.isOperational) {
+      return res.status(err.statusCode).json({
+        status: err.status,
+        message: err.message
+      });
     }
-
-    // Send error response
-    res.status(statusCode).json({
-      error: {
-        message,
-        status: statusCode
-      }
+    // Programming or other unknown error: don't leak error details
+    return res.status(500).json({
+      status: 'error',
+      message: 'Something went wrong'
     });
-  };
+  }
 
-  module.exports = errorHandler;
+  // Development error handling - send full error
+  return res.status(err.statusCode).json({
+    status: err.status,
+    error: err,
+    message: err.message,
+    stack: err.stack
+  });
+};
+
+module.exports = {
+  AppError,
+  errorHandler
+};
