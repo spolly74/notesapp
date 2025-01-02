@@ -42,6 +42,9 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/notes', notesRoutes);
 app.use('/api/actions', actionsRoutes);
+app.use('/api/folders', foldersRoutes);
+app.use('/api/tags', tagsRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
