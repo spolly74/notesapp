@@ -1,8 +1,12 @@
 {
   "dependencies": {
+    "@reduxjs/toolkit": "^2.5.0",
+    "axios": "^1.7.9",
     "cors": "^2.8.5",
     "express-rate-limit": "^7.5.0",
     "helmet": "^7.2.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-redux": "^9.2.0",
     "winston": "^3.17.0"
   }
 }
