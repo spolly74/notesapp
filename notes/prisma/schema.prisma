@@ -1,0 +1,185 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// The User model serves as the foundation for our application,
+// storing authentication details and linking to all user-created content
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  // Stores the hashed password if using credentials provider
+  password      String?
+  // Authentication and session management fields
+  emailVerified DateTime?
+  image         String?
+  // Relationships to other models
+  notes         Note[]
+  actionItems   ActionItem[]
+  folders       Folder[]
+  chatThreads   ChatThread[]
+  // Metadata
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("users")
+}
+
+// The Note model is central to our application, storing the actual note content
+// and maintaining relationships with folders, tags, and action items
+model Note {
+  id          String      @id @default(cuid())
+  title       String
+  content     String      @db.Text
+  // Relationships
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folderId    String?
+  folder      Folder?     @relation(fields: [folderId], references: [id])
+  tags        TagsOnNotes[]
+  actionItems ActionItem[]
+  chatThreads ChatThread[]
+  // Metadata
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([folderId])
+  @@map("notes")
+}
+
+// The Folder model enables hierarchical organization of notes
+model Folder {
+  id          String    @id @default(cuid())
+  name        String
+  // Support for nested folders
+  parentId    String?
+  parent      Folder?   @relation("FolderToFolder", fields: [parentId], references: [id])
+  subfolders  Folder[]  @relation("FolderToFolder")
+  // Relationships
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes       Note[]
+  // Metadata
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([parentId])
+  @@map("folders")
+}
+
+// The Tag model allows flexible categorization of notes
+model Tag {
+  id        String        @id @default(cuid())
+  name      String
+  // Many-to-many relationship with notes
+  notes     TagsOnNotes[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@map("tags")
+}
+
+// Junction table for the many-to-many relationship between Notes and Tags
+model TagsOnNotes {
+  noteId    String
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tagId     String
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([noteId, tagId])
+  @@index([noteId])
+  @@index([tagId])
+  @@map("tags_on_notes")
+}
+
+// The ActionItem model represents tasks and to-dos
+model ActionItem {
+  id          String    @id @default(cuid())
+  title       String
+  description String?   @db.Text
+  priority    Priority  @default(MEDIUM)
+  effortLevel EffortLevel @default(MEDIUM)
+  status      TaskStatus @default(NOT_STARTED)
+  dueDate     DateTime?
+  // Relationships
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noteId      String?
+  note        Note?     @relation(fields: [noteId], references: [id])
+  chatThreadId String?
+  chatThread  ChatThread? @relation(fields: [chatThreadId], references: [id])
+  // Metadata
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([noteId])
+  @@map("action_items")
+}
+
+// The ChatThread model stores conversations with the AI
+model ChatThread {
+  id          String      @id @default(cuid())
+  title       String?
+  // Relationships
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    Message[]
+  notes       Note[]      // Related notes for context
+  actionItems ActionItem[] // Tasks created from this thread
+  // Metadata
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@map("chat_threads")
+}
+
+// The Message model stores individual messages within a chat thread
+model Message {
+  id            String     @id @default(cuid())
+  content       String     @db.Text
+  role          Role       @default(USER)
+  // Relationships
+  chatThreadId  String
+  chatThread    ChatThread @relation(fields: [chatThreadId], references: [id], onDelete: Cascade)
+  // Metadata
+  createdAt     DateTime   @default(now())
+
+  @@index([chatThreadId])
+  @@map("messages")
+}
+
+// Enums provide consistent values for various status fields
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum EffortLevel {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum TaskStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}
+
+enum Role {
+  USER
+  ASSISTANT
+  SYSTEM
+}
