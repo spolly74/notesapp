@@ -3,7 +3,6 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import * as bcrypt from "bcrypt"
 
 export function SignUpForm() {
   const router = useRouter()
@@ -27,8 +26,6 @@ export function SignUpForm() {
     }
 
     try {
-      const hashedPassword = await bcrypt.hash(password, 10)
-
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
@@ -36,7 +33,7 @@ export function SignUpForm() {
         },
         body: JSON.stringify({
           email,
-          password: hashedPassword,
+          password,
         }),
       })
 
